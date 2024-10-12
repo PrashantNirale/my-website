@@ -1,0 +1,37 @@
+trigger:
+  branches:
+    include:
+      - master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '14.x'
+    displayName: 'Install Node.js'
+
+  - script: |
+      npm install
+    displayName: 'Install dependencies'
+
+  - script: |
+      echo "Building the Docker image..."
+      docker build -t yourdockerhubusername/simple-website:$(Build.BuildId) .
+    displayName: 'Build Docker Image'
+
+  - script: |
+      echo "Pushing the Docker image..."
+      docker push yourdockerhubusername/simple-website:$(Build.BuildId)
+    displayName: 'Push Docker Image'
+
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: 'YourAzureSubscription'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        echo "Deploying the Docker image..."
+        az container create --resource-group YourResourceGroup --name simple-website --image yourdockerhubusername/simple-website:$(Build.BuildId) --cpu 1 --memory 1.5 --registry-login-server yourdockerhub.azurecr.io --registry-username $(DOCKER_USERNAME) --registry-password $(DOCKER_PASSWORD)
+    displayName: 'Deploy to Azure Container Instances'
